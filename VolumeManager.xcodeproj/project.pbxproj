@@ -15,6 +15,7 @@
 		E264E2C8183021EB00F4915F /* VolumeManager.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E264E2AB183021EB00F4915F /* VolumeManager.framework */; };
 		E264E2CE183021EB00F4915F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E264E2CC183021EB00F4915F /* InfoPlist.strings */; };
 		E264E2D0183021EB00F4915F /* VolumeManagerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = E264E2CF183021EB00F4915F /* VolumeManagerTests.m */; };
+		E264E2D91831294C00F4915F /* VolumeManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E264E2BC183021EB00F4915F /* VolumeManager.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -258,6 +259,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E264E2D0183021EB00F4915F /* VolumeManagerTests.m in Sources */,
+				E264E2D91831294C00F4915F /* VolumeManager.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
