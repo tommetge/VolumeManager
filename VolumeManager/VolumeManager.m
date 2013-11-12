@@ -8,6 +8,8 @@
 
 #import "VolumeManager.h"
 
+#include <DiskArbitration/DiskArbitration.h>
+
 #include <sys/mount.h>
 
 #pragma mark Constants
@@ -67,11 +69,163 @@ NSString * const VMVolumeMountURL = @"VMVolumeMountURL";
 
 @end
 
+#pragma VolumeManager private interface
+
+@interface VolumeManager() {
+    DASessionRef _daSession;
+}
+
+- (void)volumeDidAppearWithProperties:(NSDictionary*)properties;
+- (void)volumeDidMountWithProperties:(NSDictionary*)properties;
+- (void)volumeDidUnmountWithProperties:(NSDictionary*)properties;
+- (void)volumeDidEjectWithProperties:(NSDictionary*)properties;
+- (BOOL)volumeShouldMountWithProperties:(NSDictionary*)properties;
+- (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)properties;
+- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)properties;
+
+@end
+
+#pragma mark DiskArbitration helpers
+
+VolumeManager* manager(void *context)
+{
+    return (__bridge VolumeManager*)context;
+}
+
+NSDictionary* diskRefToProperties(DADiskRef disk)
+{
+    CFDictionaryRef diskDictionary = DADiskCopyDescription(disk);
+    return (__bridge NSDictionary*)diskDictionary;
+}
+
+#pragma mark DiskArbitration callbacks
+
+void diskAppeared(DADiskRef disk, void *context)
+{
+    [manager(context) volumeDidAppearWithProperties:diskRefToProperties(disk)];
+}
+
+void diskDescriptionChanged(DADiskRef disk, CFArrayRef keys, void *context)
+{
+    // Pass on this right now
+}
+
+void diskDisappeared(DADiskRef disk, void *context)
+{
+    // Pass on this right now
+}
+
+DADissenterRef diskEjectApproval(DADiskRef disk, void *context)
+{
+    if ([manager(context) volumeShouldEjectWithProperties:diskRefToProperties(disk)]) {
+        return NULL;  // NULL is an approval
+    } else {
+        return DADissenterCreate(kCFAllocatorDefault,
+                                 kDAReturnNotPermitted,
+                                 CFSTR("Disallowed by VolumeManager"));
+    }
+}
+
+void diskEject(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    [manager(context) volumeDidEjectWithProperties:diskRefToProperties(disk)];
+}
+
+DADissenterRef diskMountApproval(DADiskRef disk, void *context)
+{
+    if ([manager(context) volumeShouldMountWithProperties:diskRefToProperties(disk)]) {
+        return NULL;  // NULL is an approval
+    } else {
+        return DADissenterCreate(kCFAllocatorDefault,
+                                 kDAReturnNotPermitted,
+                                 CFSTR("Disallowed by VolumeManager"));
+    }
+}
+
+void diskMount(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    [manager(context) volumeDidMountWithProperties:diskRefToProperties(disk)];
+}
+
+void diskPeek(DADiskRef disk, void *context)
+{
+    // Pass on this right now
+}
+
+void diskRename(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    // Pass on this right now
+}
+
+DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
+{
+    if ([manager(context) volumeShouldUnmountWithProperties:diskRefToProperties(disk)]) {
+        return NULL;  // NULL is an approval
+    } else {
+        return DADissenterCreate(kCFAllocatorDefault,
+                                 kDAReturnNotPermitted,
+                                 CFSTR("Disallowed by VolumeManager"));
+    }
+}
+
+void diskUnmount(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    [manager(context) volumeDidUnmountWithProperties:diskRefToProperties(disk)];
+}
+
 #pragma mark VolumeManager implementation
 
 @implementation VolumeManager
 
 @synthesize delegate = _delegate;
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _daSession = NULL;
+        _daSession = DASessionCreate(kCFAllocatorDefault);
+        DASessionScheduleWithRunLoop(_daSession,
+                                     [[NSRunLoop mainRunLoop] getCFRunLoop],
+                                     kCFRunLoopDefaultMode);
+        [self setupArbitrationCalls];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    if (_daSession != NULL) {
+        [self removeArbitrationCalls];
+        DASessionUnscheduleFromRunLoop(_daSession,
+                                       [[NSRunLoop mainRunLoop] getCFRunLoop],
+                                       kCFRunLoopDefaultMode);
+        CFRelease(_daSession);
+        _daSession = NULL;
+    }
+}
+
+- (void)setupArbitrationCalls
+{
+    DARegisterDiskAppearedCallback(_daSession, NULL, diskAppeared, (__bridge void*)self);
+    DARegisterDiskDescriptionChangedCallback(_daSession, NULL, NULL, diskDescriptionChanged, (__bridge void*)self);
+    DARegisterDiskDisappearedCallback(_daSession, NULL, diskDisappeared, (__bridge void*)self);
+    DARegisterDiskPeekCallback(_daSession, NULL, 0, diskPeek, (__bridge void*)self);
+    DARegisterDiskEjectApprovalCallback(_daSession, NULL, diskEjectApproval, (__bridge void*)self);
+    DARegisterDiskMountApprovalCallback(_daSession, NULL, diskMountApproval, (__bridge void*)self);
+    DARegisterDiskUnmountApprovalCallback(_daSession, NULL, diskUnmountApproval, (__bridge void*)self);
+}
+
+- (void)removeArbitrationCalls
+{
+    DAUnregisterApprovalCallback(_daSession, diskEjectApproval, (__bridge void*)self);
+    DAUnregisterApprovalCallback(_daSession, diskMountApproval, (__bridge void*)self);
+    DAUnregisterApprovalCallback(_daSession, diskUnmountApproval, (__bridge void*)self);
+    DAUnregisterCallback(_daSession, diskAppeared, (__bridge void*)self);
+    DAUnregisterCallback(_daSession, diskDescriptionChanged, (__bridge void*)self);
+    DAUnregisterCallback(_daSession, diskDisappeared, (__bridge void*)self);
+    DAUnregisterCallback(_daSession, diskPeek, (__bridge void*)self);
+}
 
 - (void)iterateMountedVolumes:(void (^)(Volume *volume))getVolume
 {
@@ -139,6 +293,67 @@ NSString * const VMVolumeMountURL = @"VMVolumeMountURL";
 - (BOOL)unmountAndEjectVolumeAt:(NSURL*)URL withError:(NSError**)error
 {
     return NO;
+}
+
+- (void)volumeDidAppearWithProperties:(NSDictionary*)properties
+{}
+
+- (void)volumeDidMountWithProperties:(NSDictionary*)properties
+{
+    if ([self delegateRespondsTo:@selector(volumeDidMountAt:withProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        [self.delegate volumeDidMountAt:url withProperties:properties];
+    }
+}
+
+- (void)volumeDidUnmountWithProperties:(NSDictionary*)properties
+{
+    if ([self delegateRespondsTo:@selector(volumeDidUnmountWithProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        [self.delegate volumeDidUnmountAt:url withProperties:properties];
+    }
+}
+
+- (void)volumeDidEjectWithProperties:(NSDictionary*)properties
+{
+    if ([self delegateRespondsTo:@selector(volumeDidEjectWithProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        [self.delegate volumeDidEjectAt:url withProperties:properties];
+    }
+}
+
+- (BOOL)volumeShouldMountWithProperties:(NSDictionary*)properties
+{
+    if ([self delegateRespondsTo:@selector(volumeShouldMountAt:withProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        return [self.delegate volumeShouldMountAt:url withProperties:properties];
+    }
+
+    return YES;
+}
+
+- (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)properties
+{
+    if ([self delegateRespondsTo:@selector(volumeShouldUnmountAt:withProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        return [self.delegate volumeShouldUnmountAt:url withProperties:properties];
+    }
+
+    return YES;
+}
+
+- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)properties
+{
+    if ([self delegateRespondsTo:@selector(volumeShouldEjectAt:withProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        return [self.delegate volumeShouldEjectAt:url withProperties:properties];
+    }
+
+    return YES;
+}
+
+- (BOOL)delegateRespondsTo:(SEL)sel {
+    return (self.delegate && [self.delegate respondsToSelector:sel]);
 }
 
 @end
