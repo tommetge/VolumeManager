@@ -13,4 +13,4 @@ Think of it as Disk Utility in Objective-C.
 Documentation
 =============
 
-Documentation will be posted shortly.
+[Check out the documentation](http://tommetge.github.io/VolumeManager/)
