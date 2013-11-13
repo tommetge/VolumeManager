@@ -17,11 +17,15 @@ NSString * const VMVolumeMountURL;
 
 @optional
 - (BOOL)volumeShouldMountAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
-- (BOOL)volumeShouldUnmountAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
-- (BOOL)volumeShouldEjectAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
+- (BOOL)volumeShouldUnmountFrom:(NSURL*)URL withProperties:(NSDictionary*)properties;
+- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)properties;
+
+- (void)volumeWillMountAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
+- (void)volumeWillUnmountFrom:(NSURL*)URL withProperties:(NSDictionary*)properties;
+- (void)volumeWillEjectWithProperties:(NSDictionary*)properties;
+
 - (void)volumeDidMountAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
-- (void)volumeDidUnmountAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
-- (void)volumeDidEjectAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
+- (void)volumeDidEjectWithProperties:(NSDictionary*)properties;
 
 @end
 

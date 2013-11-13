@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E204B4C1183262AF00AC59D2 /* VolumeManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E264E2BC183021EB00F4915F /* VolumeManager.m */; };
+		E204B4C2183262BF00AC59D2 /* DiskArbitration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E264E2DA183130FA00F4915F /* DiskArbitration.framework */; };
 		E264E2AF183021EB00F4915F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E264E2AE183021EB00F4915F /* Cocoa.framework */; };
 		E264E2B9183021EB00F4915F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E264E2B7183021EB00F4915F /* InfoPlist.strings */; };
 		E264E2BD183021EB00F4915F /* VolumeManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E264E2BC183021EB00F4915F /* VolumeManager.m */; };
@@ -18,9 +20,19 @@
 		E264E2D91831294C00F4915F /* VolumeManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E264E2BC183021EB00F4915F /* VolumeManager.m */; };
 		E264E2DB183130FA00F4915F /* DiskArbitration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E264E2DA183130FA00F4915F /* DiskArbitration.framework */; };
 		E264E2DC18318ECE00F4915F /* DiskArbitration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E264E2DA183130FA00F4915F /* DiskArbitration.framework */; };
+		E280679318325DEC000793D3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E280679218325DEC000793D3 /* Foundation.framework */; };
+		E280679618325DEC000793D3 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = E280679518325DEC000793D3 /* main.m */; };
+		E280679A18325DEC000793D3 /* VolumeMgr.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = E280679918325DEC000793D3 /* VolumeMgr.1 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		E204B4BF1832626D00AC59D2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E264E2A2183021EB00F4915F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E264E2AA183021EB00F4915F;
+			remoteInfo = VolumeManager;
+		};
 		E264E2C6183021EB00F4915F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = E264E2A2183021EB00F4915F /* Project object */;
@@ -29,6 +41,19 @@
 			remoteInfo = VolumeManager;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E280678F18325DEC000793D3 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+				E280679A18325DEC000793D3 /* VolumeMgr.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		E264E2AB183021EB00F4915F /* VolumeManager.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = VolumeManager.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -47,6 +72,11 @@
 		E264E2CD183021EB00F4915F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		E264E2CF183021EB00F4915F /* VolumeManagerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VolumeManagerTests.m; sourceTree = "<group>"; };
 		E264E2DA183130FA00F4915F /* DiskArbitration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DiskArbitration.framework; path = System/Library/Frameworks/DiskArbitration.framework; sourceTree = SDKROOT; };
+		E280679118325DEC000793D3 /* VolumeMgr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = VolumeMgr; sourceTree = BUILT_PRODUCTS_DIR; };
+		E280679218325DEC000793D3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		E280679518325DEC000793D3 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		E280679818325DEC000793D3 /* VolumeMgr-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "VolumeMgr-Prefix.pch"; sourceTree = "<group>"; };
+		E280679918325DEC000793D3 /* VolumeMgr.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = VolumeMgr.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +100,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E280678E18325DEC000793D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E204B4C2183262BF00AC59D2 /* DiskArbitration.framework in Frameworks */,
+				E280679318325DEC000793D3 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +117,7 @@
 			children = (
 				E264E2B4183021EB00F4915F /* VolumeManager */,
 				E264E2C9183021EB00F4915F /* VolumeManagerTests */,
+				E280679418325DEC000793D3 /* VolumeMgr */,
 				E264E2AD183021EB00F4915F /* Frameworks */,
 				E264E2AC183021EB00F4915F /* Products */,
 			);
@@ -88,6 +128,7 @@
 			children = (
 				E264E2AB183021EB00F4915F /* VolumeManager.framework */,
 				E264E2C2183021EB00F4915F /* VolumeManagerTests.xctest */,
+				E280679118325DEC000793D3 /* VolumeMgr */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -98,6 +139,7 @@
 				E264E2DA183130FA00F4915F /* DiskArbitration.framework */,
 				E264E2AE183021EB00F4915F /* Cocoa.framework */,
 				E264E2C3183021EB00F4915F /* XCTest.framework */,
+				E280679218325DEC000793D3 /* Foundation.framework */,
 				E264E2B0183021EB00F4915F /* Other Frameworks */,
 			);
 			name = Frameworks;
@@ -151,6 +193,24 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
+		E280679418325DEC000793D3 /* VolumeMgr */ = {
+			isa = PBXGroup;
+			children = (
+				E280679518325DEC000793D3 /* main.m */,
+				E280679918325DEC000793D3 /* VolumeMgr.1 */,
+				E280679718325DEC000793D3 /* Supporting Files */,
+			);
+			path = VolumeMgr;
+			sourceTree = "<group>";
+		};
+		E280679718325DEC000793D3 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				E280679818325DEC000793D3 /* VolumeMgr-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -200,6 +260,24 @@
 			productReference = E264E2C2183021EB00F4915F /* VolumeManagerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		E280679018325DEC000793D3 /* VolumeMgr */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E280679D18325DEC000793D3 /* Build configuration list for PBXNativeTarget "VolumeMgr" */;
+			buildPhases = (
+				E280678D18325DEC000793D3 /* Sources */,
+				E280678E18325DEC000793D3 /* Frameworks */,
+				E280678F18325DEC000793D3 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E204B4C01832626D00AC59D2 /* PBXTargetDependency */,
+			);
+			name = VolumeMgr;
+			productName = VolumeMgr;
+			productReference = E280679118325DEC000793D3 /* VolumeMgr */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -228,6 +306,7 @@
 			targets = (
 				E264E2AA183021EB00F4915F /* VolumeManager */,
 				E264E2C1183021EB00F4915F /* VolumeManagerTests */,
+				E280679018325DEC000793D3 /* VolumeMgr */,
 			);
 		};
 /* End PBXProject section */
@@ -269,9 +348,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E280678D18325DEC000793D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E280679618325DEC000793D3 /* main.m in Sources */,
+				E204B4C1183262AF00AC59D2 /* VolumeManager.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		E204B4C01832626D00AC59D2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E264E2AA183021EB00F4915F /* VolumeManager */;
+			targetProxy = E204B4BF1832626D00AC59D2 /* PBXContainerItemProxy */;
+		};
 		E264E2C7183021EB00F4915F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E264E2AA183021EB00F4915F /* VolumeManager */;
@@ -437,6 +530,28 @@
 			};
 			name = Release;
 		};
+		E280679B18325DEC000793D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "VolumeMgr/VolumeMgr-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		E280679C18325DEC000793D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "VolumeMgr/VolumeMgr-Prefix.pch";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -456,6 +571,7 @@
 				E264E2D5183021EB00F4915F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		E264E2D6183021EB00F4915F /* Build configuration list for PBXNativeTarget "VolumeManagerTests" */ = {
 			isa = XCConfigurationList;
@@ -464,6 +580,16 @@
 				E264E2D8183021EB00F4915F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E280679D18325DEC000793D3 /* Build configuration list for PBXNativeTarget "VolumeMgr" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E280679B18325DEC000793D3 /* Debug */,
+				E280679C18325DEC000793D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

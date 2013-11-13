@@ -75,13 +75,14 @@ NSString * const VMVolumeMountURL = @"VMVolumeMountURL";
     DASessionRef _daSession;
 }
 
-- (void)volumeDidAppearWithProperties:(NSDictionary*)properties;
-- (void)volumeDidMountWithProperties:(NSDictionary*)properties;
-- (void)volumeDidUnmountWithProperties:(NSDictionary*)properties;
-- (void)volumeDidEjectWithProperties:(NSDictionary*)properties;
-- (BOOL)volumeShouldMountWithProperties:(NSDictionary*)properties;
-- (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)properties;
-- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)properties;
+- (void)volumeWillMountWithProperties:(NSDictionary*)properties;
+- (void)volumeWillUnmountWithProperties:(NSDictionary*)properties;
+- (void)volumeWillEjectWithProperties:(NSDictionary*)properties;
+- (void)volumeDidMountWithProperties:(NSDictionary*)da_properties;
+- (void)volumeDidEjectWithProperties:(NSDictionary*)da_properties;
+- (BOOL)volumeShouldMountWithProperties:(NSDictionary*)da_properties;
+- (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)da_properties;
+- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)da_properties;
 
 @end
 
@@ -102,7 +103,7 @@ NSDictionary* diskRefToProperties(DADiskRef disk)
 
 void diskAppeared(DADiskRef disk, void *context)
 {
-    [manager(context) volumeDidAppearWithProperties:diskRefToProperties(disk)];
+    [manager(context) volumeDidMountWithProperties:diskRefToProperties(disk)];
 }
 
 void diskDescriptionChanged(DADiskRef disk, CFArrayRef keys, void *context)
@@ -112,7 +113,7 @@ void diskDescriptionChanged(DADiskRef disk, CFArrayRef keys, void *context)
 
 void diskDisappeared(DADiskRef disk, void *context)
 {
-    // Pass on this right now
+    [manager(context) volumeDidEjectWithProperties:diskRefToProperties(disk)];
 }
 
 DADissenterRef diskEjectApproval(DADiskRef disk, void *context)
@@ -126,6 +127,7 @@ DADissenterRef diskEjectApproval(DADiskRef disk, void *context)
     }
 }
 
+// This is only used for DADiskEject()
 void diskEject(DADiskRef disk, DADissenterRef dissenter, void *context)
 {
     [manager(context) volumeDidEjectWithProperties:diskRefToProperties(disk)];
@@ -140,11 +142,6 @@ DADissenterRef diskMountApproval(DADiskRef disk, void *context)
                                  kDAReturnNotPermitted,
                                  CFSTR("Disallowed by VolumeManager"));
     }
-}
-
-void diskMount(DADiskRef disk, DADissenterRef dissenter, void *context)
-{
-    [manager(context) volumeDidMountWithProperties:diskRefToProperties(disk)];
 }
 
 void diskPeek(DADiskRef disk, void *context)
@@ -166,11 +163,6 @@ DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
                                  kDAReturnNotPermitted,
                                  CFSTR("Disallowed by VolumeManager"));
     }
-}
-
-void diskUnmount(DADiskRef disk, DADissenterRef dissenter, void *context)
-{
-    [manager(context) volumeDidUnmountWithProperties:diskRefToProperties(disk)];
 }
 
 #pragma mark VolumeManager implementation
@@ -295,65 +287,130 @@ void diskUnmount(DADiskRef disk, DADissenterRef dissenter, void *context)
     return NO;
 }
 
-- (void)volumeDidAppearWithProperties:(NSDictionary*)properties
+- (void)volumeWillMountWithProperties:(NSDictionary*)properties
+{
+    NSLog(@"Volume will mount.");
+    if ([self delegateRespondsTo:@selector(volumeWillMountAt:withProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        if (url) {
+            [self.delegate volumeWillMountAt:url withProperties:properties];
+        }
+    }
+}
+
+- (void)volumeWillUnmountWithProperties:(NSDictionary*)properties
+{
+    NSLog(@"Volume will unmount.");
+    if ([self delegateRespondsTo:@selector(volumeWillUnmountFrom:withProperties:)]) {
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        [self.delegate volumeWillUnmountFrom:url withProperties:properties];
+    }
+}
+
+- (void)volumeWillEjectWithProperties:(NSDictionary*)properties
+{
+    NSLog(@"Volume will eject.");
+    if ([self delegateRespondsTo:@selector(volumeWillEjectWithProperties:)]) {
+        [self.delegate volumeWillEjectWithProperties:properties];
+    }
+}
+
+- (void)volumeDidAppearWithProperties:(NSDictionary*)da_properties
 {}
 
-- (void)volumeDidMountWithProperties:(NSDictionary*)properties
+- (void)volumeDidMountWithProperties:(NSDictionary*)da_properties
 {
     if ([self delegateRespondsTo:@selector(volumeDidMountAt:withProperties:)]) {
+        NSDictionary *properties = [self propertiesForDAProperties:da_properties];
         NSURL *url = [properties objectForKey:VMVolumeMountURL];
-        [self.delegate volumeDidMountAt:url withProperties:properties];
+        if (url) {
+            [self.delegate volumeDidMountAt:url withProperties:properties];
+        }
     }
 }
 
-- (void)volumeDidUnmountWithProperties:(NSDictionary*)properties
-{
-    if ([self delegateRespondsTo:@selector(volumeDidUnmountWithProperties:)]) {
-        NSURL *url = [properties objectForKey:VMVolumeMountURL];
-        [self.delegate volumeDidUnmountAt:url withProperties:properties];
-    }
-}
-
-- (void)volumeDidEjectWithProperties:(NSDictionary*)properties
+- (void)volumeDidEjectWithProperties:(NSDictionary*)da_properties
 {
     if ([self delegateRespondsTo:@selector(volumeDidEjectWithProperties:)]) {
-        NSURL *url = [properties objectForKey:VMVolumeMountURL];
-        [self.delegate volumeDidEjectAt:url withProperties:properties];
+        NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+        [self.delegate volumeDidEjectWithProperties:properties];
     }
 }
 
-- (BOOL)volumeShouldMountWithProperties:(NSDictionary*)properties
+- (BOOL)volumeShouldMountWithProperties:(NSDictionary*)da_properties
 {
+    BOOL shouldMount = YES;
+    NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+
     if ([self delegateRespondsTo:@selector(volumeShouldMountAt:withProperties:)]) {
         NSURL *url = [properties objectForKey:VMVolumeMountURL];
-        return [self.delegate volumeShouldMountAt:url withProperties:properties];
+        if (url) {
+            shouldMount = [self.delegate volumeShouldMountAt:url withProperties:properties];
+        }
     }
 
-    return YES;
+    if (shouldMount) {
+        [self volumeWillMountWithProperties:properties];
+    }
+
+    return shouldMount;
 }
 
-- (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)properties
+- (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)da_properties
 {
-    if ([self delegateRespondsTo:@selector(volumeShouldUnmountAt:withProperties:)]) {
+    BOOL shouldUnmount = YES;
+    NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+
+    if ([self delegateRespondsTo:@selector(volumeShouldUnmountFrom:withProperties:)]) {
         NSURL *url = [properties objectForKey:VMVolumeMountURL];
-        return [self.delegate volumeShouldUnmountAt:url withProperties:properties];
+        if (url) {
+            shouldUnmount = [self.delegate volumeShouldUnmountFrom:url withProperties:properties];
+        }
     }
 
-    return YES;
+    if (shouldUnmount) {
+        [self volumeWillUnmountWithProperties:properties];
+    }
+
+    return shouldUnmount;
 }
 
-- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)properties
+- (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)da_properties
 {
-    if ([self delegateRespondsTo:@selector(volumeShouldEjectAt:withProperties:)]) {
-        NSURL *url = [properties objectForKey:VMVolumeMountURL];
-        return [self.delegate volumeShouldEjectAt:url withProperties:properties];
+    BOOL shouldEject = YES;
+    NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+
+    if ([self delegateRespondsTo:@selector(volumeShouldEjectWithProperties:)]) {
+        shouldEject = [self.delegate volumeShouldEjectWithProperties:properties];
     }
 
-    return YES;
+    if (shouldEject) {
+        [self volumeWillEjectWithProperties:properties];
+    }
+
+    return shouldEject;
 }
 
 - (BOOL)delegateRespondsTo:(SEL)sel {
     return (self.delegate && [self.delegate respondsToSelector:sel]);
+}
+
+- (NSDictionary*)propertiesForDAProperties:(NSDictionary*)da_properties {
+    NSMutableDictionary* properties = [da_properties mutableCopy];
+    if ([da_properties objectForKey:@"DAVolumePath"]) {
+        [properties setObject:[da_properties objectForKey:@"DAVolumePath"] forKey:VMVolumeMountURL];
+    }
+    if ([da_properties objectForKey:@"DAVolumeKind"]) {
+        [properties setObject:[da_properties objectForKey:@"DAVolumeKind"] forKey:VMVolumeType];
+    }
+    if ([da_properties objectForKey:@"DAMediaRemovable"]) {
+        [properties setObject:[da_properties objectForKey:@"DAMediaRemovable"] forKey:VMVolumeLocal];
+    }
+    if ([da_properties objectForKey:@"DAVolumeName"]) {
+        [properties setObject:[da_properties objectForKey:@"DAVolumeName"] forKey:VMVolumeName];
+    }
+
+    return properties;
 }
 
 @end

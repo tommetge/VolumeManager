@@ -9,6 +9,11 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>VolumeMgr.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
@@ -18,6 +23,11 @@
 			<true/>
 		</dict>
 		<key>E264E2C1183021EB00F4915F</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>E280679018325DEC000793D3</key>
 		<dict>
 			<key>primary</key>
 			<true/>
