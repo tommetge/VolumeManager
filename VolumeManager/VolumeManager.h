@@ -25,7 +25,12 @@ NSString * const VMVolumeMountURL;
 - (void)volumeWillEjectWithProperties:(NSDictionary*)properties;
 
 - (void)volumeDidMountAt:(NSURL*)URL withProperties:(NSDictionary*)properties;
+/** This will only be called in response to unmount/eject requests */
+- (void)volumeDidUnmountWithProperties:(NSDictionary*)properties;
 - (void)volumeDidEjectWithProperties:(NSDictionary*)properties;
+
+- (void)volumeDidFailToUnmountFrom:(NSURL*)URL withProperties:(NSDictionary*)properties error:(NSError*)error;
+- (void)volumeDidFailToEjectWithProperties:(NSDictionary*)properties error:(NSError*)error;
 
 @end
 

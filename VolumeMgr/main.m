@@ -22,6 +22,9 @@ static void NSPrint(NSString *format, ...) {
 
 @interface VolumeWatcher : NSObject <VolumeManagerDelegate>
 
+@property (assign) BOOL unmount_completed;
+@property (assign) BOOL eject_completed;
+
 - (void)volumeWillMountAt:(NSURL *)URL withProperties:(NSDictionary *)properties;
 - (void)volumeWillUnmountFrom:(NSURL *)URL withProperties:(NSDictionary *)properties;
 - (void)volumeWillEjectWithProperties:(NSDictionary *)properties;
@@ -31,6 +34,18 @@ static void NSPrint(NSString *format, ...) {
 @end
 
 @implementation VolumeWatcher
+
+@synthesize unmount_completed, eject_completed;
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.unmount_completed = NO;
+        self.eject_completed = NO;
+    }
+    return self;
+}
 
 - (void)volumeWillMountAt:(NSURL *)URL withProperties:(NSDictionary *)properties
 {
@@ -54,7 +69,26 @@ static void NSPrint(NSString *format, ...) {
 
 - (void)volumeDidEjectWithProperties:(NSDictionary *)properties
 {
+    self.eject_completed = YES;  // This amy or may not actually be true
     NSPrint(@"Volume '%@' ejected", [properties objectForKey:VMVolumeName]);
+}
+
+- (void)volumeDidUnmountWithProperties:(NSDictionary *)properties
+{
+    self.unmount_completed = YES;
+    NSPrint(@"Volume '%@' unmounted", [properties objectForKey:VMVolumeName]);
+}
+
+- (void)volumeDidFailToUnmountFrom:(NSURL *)URL withProperties:(NSDictionary *)properties error:(NSError *)error
+{
+    self.unmount_completed = YES;
+    NSPrint(@"Volume '%@' failed to unmount from '%@': %@", [properties objectForKey:VMVolumeName], [URL path], [error localizedDescription]);
+}
+
+- (void)volumeDidFailToEjectWithProperties:(NSDictionary *)properties error:(NSError *)error
+{
+    self.eject_completed = YES;
+    NSPrint(@"Volume '%@' failed to eject: %@", [properties objectForKey:VMVolumeName], [error localizedDescription]);
 }
 
 @end
@@ -75,11 +109,55 @@ int main(int argc, const char * argv[])
             exit(0);
         } else {
             NSString *command = [[NSString stringWithUTF8String:argv[1]] lowercaseString];
+            if ([command isEqualToString:@"help"]) {
+                NSPrint(@"Available commands: list, unmount, eject");
+                exit(1);
+            }
             if ([command isEqualToString:@"list"]) {
                 VolumeManager* manager = [[VolumeManager alloc] init];
 
                 NSPrint(@"Currently mounted volumes:");
                 NSPrint(@"%@", [manager mountedVolumes]);
+
+                exit(0);
+            }
+            if ([command isEqualToString:@"unmount"]) {
+                if (argc != 3) {
+                    NSPrint(@"Usage: VolumeMgr unmount [path]");
+                    exit(1);
+                }
+
+                VolumeManager *manager = [[VolumeManager alloc] init];
+                VolumeWatcher *watcher = [[VolumeWatcher alloc] init];
+                manager.delegate = watcher;
+
+                NSString *path = [NSString stringWithUTF8String:argv[2]];
+                [manager unmountVolumeAt:[NSURL fileURLWithPath:path] withError:nil];
+
+                while (!watcher.unmount_completed) {
+                    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
+                }
+
+                exit(0);
+            }
+            if ([command isEqualToString:@"eject"]) {
+                if (argc != 3) {
+                    NSPrint(@"Usage: VolumeMgr eject [path]");
+                    exit(1);
+                }
+
+                VolumeManager *manager = [[VolumeManager alloc] init];
+                VolumeWatcher *watcher = [[VolumeWatcher alloc] init];
+                manager.delegate = watcher;
+
+                NSString *path = [NSString stringWithUTF8String:argv[2]];
+                [manager unmountAndEjectVolumeAt:[NSURL fileURLWithPath:path] withError:nil];
+
+                while (!watcher.eject_completed) {
+                    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
+                }
+
+                exit(0);
             }
         }
 

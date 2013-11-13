@@ -79,7 +79,11 @@ NSString * const VMVolumeMountURL = @"VMVolumeMountURL";
 - (void)volumeWillUnmountWithProperties:(NSDictionary*)properties;
 - (void)volumeWillEjectWithProperties:(NSDictionary*)properties;
 - (void)volumeDidMountWithProperties:(NSDictionary*)da_properties;
+- (void)volumeDidUnmountWithProperties:(NSDictionary*)da_properties;
+- (void)volumeDidUnmountWithProperties:(NSDictionary *)da_properties ejectDisk:(DADiskRef)disk;
 - (void)volumeDidEjectWithProperties:(NSDictionary*)da_properties;
+- (void)volumeDidFailToUnmountWithProperties:(NSDictionary*)da_properties error:(NSError*)error;
+- (void)volumeDidFailToEjectWithProperties:(NSDictionary*)da_properties error:(NSError*)error;
 - (BOOL)volumeShouldMountWithProperties:(NSDictionary*)da_properties;
 - (BOOL)volumeShouldUnmountWithProperties:(NSDictionary*)da_properties;
 - (BOOL)volumeShouldEjectWithProperties:(NSDictionary*)da_properties;
@@ -162,6 +166,56 @@ DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
         return DADissenterCreate(kCFAllocatorDefault,
                                  kDAReturnNotPermitted,
                                  CFSTR("Disallowed by VolumeManager"));
+    }
+}
+
+void diskUnmounted(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    if (dissenter == NULL) {
+        // Success
+        [manager(context) volumeDidUnmountWithProperties:diskRefToProperties(disk)];
+    } else {
+        // Failure
+        NSDictionary *userInfo = @{NSLocalizedDescriptionKey: (__bridge NSString*)DADissenterGetStatusString(dissenter)};
+        NSError *error = [NSError errorWithDomain:@"VolumeManager"
+                                             code:DADissenterGetStatus(dissenter)
+                                         userInfo:userInfo];
+        [manager(context) volumeDidFailToUnmountWithProperties:diskRefToProperties(disk)
+                                                         error:error];
+    }
+}
+
+void diskUnmountedShouldEject(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    if (dissenter == NULL) {
+        // Success
+        [manager(context) volumeDidUnmountWithProperties:diskRefToProperties(disk) ejectDisk:disk];
+    } else {
+        // Failure
+        NSDictionary *userInfo = @{NSLocalizedDescriptionKey: (__bridge NSString*)DADissenterGetStatusString(dissenter)};
+        NSError *error = [NSError errorWithDomain:@"VolumeManager"
+                                             code:DADissenterGetStatus(dissenter)
+                                         userInfo:userInfo];
+        [manager(context) volumeDidFailToUnmountWithProperties:diskRefToProperties(disk)
+                                                         error:error];
+        [manager(context) volumeDidFailToEjectWithProperties:diskRefToProperties(disk)
+                                                       error:error];
+    }
+}
+
+void diskEjected(DADiskRef disk, DADissenterRef dissenter, void *context)
+{
+    if (dissenter == NULL) {
+        // Success
+        [manager(context) volumeDidEjectWithProperties:diskRefToProperties(disk)];
+    } else {
+        // Failure
+        NSDictionary *userInfo = @{NSLocalizedDescriptionKey: (__bridge NSString*)DADissenterGetStatusString(dissenter)};
+        NSError *error = [NSError errorWithDomain:@"VolumeManager"
+                                             code:DADissenterGetStatus(dissenter)
+                                         userInfo:userInfo];
+        [manager(context) volumeDidFailToEjectWithProperties:diskRefToProperties(disk)
+                                                       error:error];
     }
 }
 
@@ -279,17 +333,45 @@ DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
 
 - (BOOL)unmountVolumeAt:(NSURL*)URL withError:(NSError**)error
 {
-    return NO;
+    struct statfs fsStat;
+	DADiskRef disk = NULL;
+
+	if (statfs([[URL path] UTF8String], &fsStat) != 0) return NO;
+
+	disk = DADiskCreateFromBSDName(kCFAllocatorDefault,
+								   _daSession,
+								   fsStat.f_mntfromname);
+    if (!disk) return NO;
+
+    DADiskUnmount(disk, kDADiskUnmountOptionDefault, diskUnmounted, (__bridge void*)self);
+    CFRelease(disk);
+
+    return YES;
 }
 
 - (BOOL)unmountAndEjectVolumeAt:(NSURL*)URL withError:(NSError**)error
 {
-    return NO;
+    struct statfs fsStat;
+	DADiskRef disk = NULL;
+
+	if (statfs([[URL path] UTF8String], &fsStat) != 0) return NO;
+
+	disk = DADiskCreateFromBSDName(kCFAllocatorDefault,
+								   _daSession,
+								   fsStat.f_mntfromname);
+    if (!disk) return NO;
+
+    DADiskRef wholeDisk = DADiskCopyWholeDisk(disk);
+    CFRelease(disk);
+
+    DADiskUnmount(wholeDisk, kDADiskUnmountOptionWhole, diskUnmountedShouldEject, (__bridge void*)self);
+    CFRelease(wholeDisk);
+
+    return YES;
 }
 
 - (void)volumeWillMountWithProperties:(NSDictionary*)properties
 {
-    NSLog(@"Volume will mount.");
     if ([self delegateRespondsTo:@selector(volumeWillMountAt:withProperties:)]) {
         NSURL *url = [properties objectForKey:VMVolumeMountURL];
         if (url) {
@@ -300,7 +382,6 @@ DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
 
 - (void)volumeWillUnmountWithProperties:(NSDictionary*)properties
 {
-    NSLog(@"Volume will unmount.");
     if ([self delegateRespondsTo:@selector(volumeWillUnmountFrom:withProperties:)]) {
         NSURL *url = [properties objectForKey:VMVolumeMountURL];
         [self.delegate volumeWillUnmountFrom:url withProperties:properties];
@@ -309,7 +390,6 @@ DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
 
 - (void)volumeWillEjectWithProperties:(NSDictionary*)properties
 {
-    NSLog(@"Volume will eject.");
     if ([self delegateRespondsTo:@selector(volumeWillEjectWithProperties:)]) {
         [self.delegate volumeWillEjectWithProperties:properties];
     }
@@ -329,11 +409,42 @@ DADissenterRef diskUnmountApproval(DADiskRef disk, void *context)
     }
 }
 
+- (void)volumeDidUnmountWithProperties:(NSDictionary*)da_properties
+{
+    if ([self delegateRespondsTo:@selector(volumeDidUnmountWithProperties:)]) {
+        NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+        [self.delegate volumeDidUnmountWithProperties:properties];
+    }
+}
+
+- (void)volumeDidUnmountWithProperties:(NSDictionary *)da_properties ejectDisk:(DADiskRef)disk
+{
+    [self volumeDidUnmountWithProperties:da_properties];
+    DADiskEject(disk, kDADiskEjectOptionDefault, diskEjected, (__bridge void*)self);
+}
+
 - (void)volumeDidEjectWithProperties:(NSDictionary*)da_properties
 {
     if ([self delegateRespondsTo:@selector(volumeDidEjectWithProperties:)]) {
         NSDictionary *properties = [self propertiesForDAProperties:da_properties];
         [self.delegate volumeDidEjectWithProperties:properties];
+    }
+}
+
+- (void)volumeDidFailToUnmountWithProperties:(NSDictionary*)da_properties error:(NSError*)error
+{
+    if ([self delegateRespondsTo:@selector(volumeDidFailToUnmountFrom:withProperties:error:)]) {
+        NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+        NSURL *url = [properties objectForKey:VMVolumeMountURL];
+        [self.delegate volumeDidFailToUnmountFrom:url withProperties:properties error:error];
+    }
+}
+
+- (void)volumeDidFailToEjectWithProperties:(NSDictionary*)da_properties error:(NSError*)error
+{
+    if ([self delegateRespondsTo:@selector(volumeDidFailToEjectWithProperties:error:)]) {
+        NSDictionary *properties = [self propertiesForDAProperties:da_properties];
+        [self.delegate volumeDidFailToEjectWithProperties:properties error:error];
     }
 }
 
