@@ -159,6 +159,17 @@ int main(int argc, const char * argv[])
 
                 exit(0);
             }
+            if ([command isEqualToString:@"info"]) {
+                if (argc != 3) {
+                    NSPrint(@"Usage: VolumeMgr info [path]");
+                    exit(1);
+                }
+
+                VolumeManager *manager = [[VolumeManager alloc] init];
+
+                NSString *path = [NSString stringWithUTF8String:argv[2]];
+                NSPrint(@"%@", [manager mountedVolumeInfoAt:[NSURL fileURLWithPath:path]]);
+            }
         }
 
     }

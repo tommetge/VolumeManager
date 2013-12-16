@@ -18,6 +18,7 @@ NSString * const VMVolumeType = @"VMVolumeType";
 NSString * const VMVolumeName = @"VMVolumeName";
 NSString * const VMVolumeLocal = @"VMVolumeLocal";
 NSString * const VMVolumeMountURL = @"VMVolumeMountURL";
+NSString * const VMVolumeNetwork = @"VMVolumeNetwork";
 
 #pragma mark Volume
 
@@ -99,8 +100,14 @@ VolumeManager* manager(void *context)
 
 NSDictionary* diskRefToProperties(DADiskRef disk)
 {
+    NSDictionary *diskProperties;
     CFDictionaryRef diskDictionary = DADiskCopyDescription(disk);
-    return (__bridge NSDictionary*)diskDictionary;
+    if (diskDictionary) {
+        NSDictionary* diskDict = (__bridge NSDictionary*)diskDictionary;
+        diskProperties = [NSDictionary dictionaryWithDictionary:diskDict];
+        CFRelease(diskDictionary);
+    }
+    return diskProperties;;
 }
 
 #pragma mark DiskArbitration callbacks
@@ -331,6 +338,35 @@ void diskEjected(DADiskRef disk, DADissenterRef dissenter, void *context)
     return typedVolumes;
 }
 
+- (NSDictionary*)mountedVolumeInfoAt:(NSURL *)url
+{
+    __block NSDictionary *volumeInfo;
+    [self iterateMountedVolumes:^(Volume *volume) {
+        if ([volume.url isEqual:url]) {
+            volumeInfo = [volume properties];
+        }
+    }];
+
+    if (volumeInfo) {
+        CFURLRef volumeURL = (__bridge CFURLRef)[volumeInfo objectForKey:VMVolumeMountURL];
+        DADiskRef disk = DADiskCreateFromVolumePath(kCFAllocatorDefault,
+                                                    _daSession,
+                                                    volumeURL);
+        if (!disk) return volumeInfo;
+
+        CFDictionaryRef diskDescription = DADiskCopyDescription(disk);
+        CFRelease(disk);
+
+        NSDictionary *properties =
+            [self propertiesForDAProperties:(__bridge NSDictionary*)diskDescription];
+        CFRelease(diskDescription);
+
+        return properties;
+    }
+
+    return volumeInfo;
+}
+
 - (BOOL)unmountVolumeAt:(NSURL*)URL withError:(NSError**)error
 {
     struct statfs fsStat;
@@ -519,6 +555,9 @@ void diskEjected(DADiskRef disk, DADissenterRef dissenter, void *context)
     }
     if ([da_properties objectForKey:@"DAVolumeName"]) {
         [properties setObject:[da_properties objectForKey:@"DAVolumeName"] forKey:VMVolumeName];
+    }
+    if ([da_properties objectForKey:@"DAVolumeNetwork"]) {
+        [properties setObject:[da_properties objectForKey:@"DAVolumeNetwork"] forKey:VMVolumeNetwork];
     }
 
     return properties;

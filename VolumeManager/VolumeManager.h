@@ -12,6 +12,7 @@ NSString * const VMVolumeType;
 NSString * const VMVolumeName;
 NSString * const VMVolumeLocal;
 NSString * const VMVolumeMountURL;
+NSString * const VMVolumeNetwork;
 
 @protocol VolumeManagerDelegate <NSObject>
 
@@ -221,6 +222,15 @@ NSString * const VMVolumeMountURL;
  above).
  */
 - (NSArray*)mountedVolumesForType:(NSString*)type;
+
+/**
+ Asks for information about the volume mounted at the provided URL
+
+ @return NSDictionary* with all available volume attributes
+
+ @note The NSDictionary* includes the VM-prefixed keys (see constants defined above.)
+ */
+- (NSDictionary*)mountedVolumeInfoAt:(NSURL*)URL;
 
 /**
  Unmounts the volume at the given path
